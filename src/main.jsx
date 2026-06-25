@@ -11,7 +11,10 @@ import Dashboard from './pages/Dashboard'
 import Catalog from './pages/Catalog'
 import Marketplace from './pages/Marketplace'
 import Profile from './pages/Profile'
+import Admin from './pages/Admin'
 import { Login, Register } from './pages/Login'
+
+const ADMIN_EMAIL = 'xultun18@gmail.com'
 
 function ProtectedRoute({ children }) {
   const { user, authLoading } = useStore()
@@ -24,7 +27,13 @@ function ProtectedRoute({ children }) {
   return children
 }
 
-// Si está logueado, redirige al dashboard
+function AdminRoute({ children }) {
+  const { user, authLoading } = useStore()
+  if (authLoading) return null
+  if (!user || user.email !== ADMIN_EMAIL) return <Navigate to="/" replace />
+  return children
+}
+
 function HomeRoute() {
   const { user, authLoading } = useStore()
   if (authLoading) return null
@@ -51,6 +60,7 @@ function App() {
           <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="catalogo" element={<ProtectedRoute><Catalog /></ProtectedRoute>} />
           <Route path="perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>
