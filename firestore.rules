@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Perfil de usuario: solo el propietario puede escribir, todos pueden leer
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Catálogo personal: solo el propietario puede leer/escribir
+    match /catalogs/{uid}/stickers/{stickerId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Listings/marketplace: todos los autenticados pueden leer
+    // Solo el creador puede crear/modificar sus listings
+    match /listings/{listingId} {
+      allow read: if true; // público para ver el mercado sin cuenta
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.activo == true;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
+  }
+}
