@@ -9,7 +9,7 @@ Comunidad de coleccionistas del Álbum 3 Reyes del Mundial.
 - **GitHub Actions** — Deploy automático al hacer push a `main`
 
 ---
-
+ 
 ## Configuración inicial (paso a paso)
 
 ### 1. Firebase — Crear proyecto
