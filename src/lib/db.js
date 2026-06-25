@@ -1,23 +1,12 @@
 import {
   doc, setDoc, getDoc, updateDoc, collection,
   query, where, getDocs, addDoc, deleteDoc,
-  serverTimestamp, arrayUnion, arrayRemove, orderBy, limit
+  serverTimestamp, orderBy, limit, getCountFromServer
 } from 'firebase/firestore'
 import { db } from './firebase'
 
-// ============================================================
-// USUARIOS
-// ============================================================
+// ── USUARIOS ──────────────────────────────────────────────────
 
-/**
- * Crear perfil de usuario en Firestore al registrarse
- * Estructura del documento users/{uid}:
- * {
- *   uid, displayName, email, photoURL, whatsapp,
- *   pais, createdAt, updatedAt,
- *   catalogStats: { total, tengo, faltan, repetidas }
- * }
- */
 export async function createUserProfile(uid, data) {
   await setDoc(doc(db, 'users', uid), {
     uid,
@@ -29,6 +18,7 @@ export async function createUserProfile(uid, data) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     catalogStats: { total: 0, tengo: 0, faltan: 0, repetidas: 0 },
+    lastActivity: serverTimestamp(),
   })
 }
 
@@ -38,26 +28,50 @@ export async function getUserProfile(uid) {
 }
 
 export async function updateUserProfile(uid, data) {
-  await updateDoc(doc(db, 'users', uid), {
-    ...data,
-    updatedAt: serverTimestamp(),
-  })
+  await updateDoc(doc(db, 'users', uid), { ...data, updatedAt: serverTimestamp() })
 }
 
-// ============================================================
-// CATÁLOGO PERSONAL
-// ============================================================
+// Ranking global: top usuarios por cromos completados
+export async function getLeaderboard(maxUsers = 10) {
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'users'),
+      orderBy('catalogStats.tengo', 'desc'),
+      limit(maxUsers)
+    ))
+    return snap.docs.map(d => d.data())
+  } catch {
+    // Si el índice no existe aún, devuelve vacío
+    return []
+  }
+}
 
-/**
- * Colección: catalogs/{uid}/stickers/{stickerId}
- * Cada documento:
- * {
- *   stickerId,        // ej: "47", "T-12", "A"
- *   status,           // 'tengo' | 'falta' | 'repetida'
- *   cantidad,         // número de copias (1, 2, 3...)
- *   updatedAt
- * }
- */
+// Usuarios recientes (para "nuevos miembros")
+export async function getRecentUsers(maxUsers = 6) {
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'users'),
+      orderBy('createdAt', 'desc'),
+      limit(maxUsers)
+    ))
+    return snap.docs.map(d => d.data())
+  } catch {
+    return []
+  }
+}
+
+// Total de usuarios registrados
+export async function getTotalUsers() {
+  try {
+    const snap = await getCountFromServer(collection(db, 'users'))
+    return snap.data().count
+  } catch {
+    return 0
+  }
+}
+
+// ── CATÁLOGO ──────────────────────────────────────────────────
+
 export async function getUserCatalog(uid) {
   const colRef = collection(db, 'catalogs', uid, 'stickers')
   const snap = await getDocs(colRef)
@@ -70,50 +84,66 @@ export async function updateStickerStatus(uid, stickerId, status, cantidad = 1) 
   const ref = doc(db, 'catalogs', uid, 'stickers', String(stickerId))
   await setDoc(ref, {
     stickerId: String(stickerId),
-    status, // 'tengo' | 'falta' | 'repetida'
+    status,
     cantidad,
     updatedAt: serverTimestamp(),
   }, { merge: true })
+
+  // También guarda en actividad reciente del usuario
+  await logActivity(uid, {
+    type: 'sticker',
+    stickerId: String(stickerId),
+    status,
+    ts: serverTimestamp(),
+  })
 }
 
 export async function updateMultipleStickers(uid, updates) {
-  // updates: [{ stickerId, status, cantidad }]
   const promises = updates.map(({ stickerId, status, cantidad = 1 }) =>
     updateStickerStatus(uid, stickerId, status, cantidad)
   )
   await Promise.all(promises)
 }
 
-// Recalcular stats del catálogo
 export async function recalcCatalogStats(uid, catalog) {
-  const total = Object.keys(catalog).length
   const tengo = Object.values(catalog).filter(s => s.status === 'tengo').length
   const faltan = Object.values(catalog).filter(s => s.status === 'falta').length
   const repetidas = Object.values(catalog).filter(s => s.status === 'repetida').length
   await updateDoc(doc(db, 'users', uid), {
-    catalogStats: { total, tengo, faltan, repetidas },
+    catalogStats: { total: tengo + faltan + repetidas, tengo, faltan, repetidas },
     updatedAt: serverTimestamp(),
   })
 }
 
-// ============================================================
-// MARKETPLACE: PUBLICACIONES
-// ============================================================
+// ── ACTIVIDAD ─────────────────────────────────────────────────
+// Guarda las últimas acciones del usuario (para feed de actividad)
 
-/**
- * Colección: listings/{listingId}
- * {
- *   uid, displayName, whatsapp, photoURL,
- *   type,          // 'venta' | 'intercambio' | 'busqueda'
- *   stickers,      // array de stickerId que ofrece/busca
- *   stickerInfo,   // array de { id, label, pais, grupo }
- *   descripcion,
- *   precio,        // solo si type === 'venta'
- *   moneda,        // 'USD' | 'DOP' | 'PEN' | etc
- *   activo,
- *   createdAt, updatedAt
- * }
- */
+export async function logActivity(uid, activity) {
+  try {
+    await addDoc(collection(db, 'activity'), {
+      uid,
+      ...activity,
+      createdAt: serverTimestamp(),
+    })
+  } catch {}
+}
+
+// Feed de actividad global (para el dashboard social)
+export async function getGlobalFeed(maxItems = 20) {
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'activity'),
+      orderBy('createdAt', 'desc'),
+      limit(maxItems)
+    ))
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  } catch {
+    return []
+  }
+}
+
+// ── MARKETPLACE ───────────────────────────────────────────────
+
 export async function createListing(uid, data) {
   const userSnap = await getDoc(doc(db, 'users', uid))
   const user = userSnap.data()
@@ -134,20 +164,26 @@ export async function createListing(uid, data) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+
+  // Log actividad
+  await logActivity(uid, {
+    type: 'listing',
+    listingType: data.type,
+    stickers: data.stickers.slice(0, 5),
+    displayName: user.displayName,
+  })
+
   return ref.id
 }
 
 export async function getListings(filters = {}) {
-  let q = collection(db, 'listings')
   const constraints = [where('activo', '==', true)]
-
   if (filters.type) constraints.push(where('type', '==', filters.type))
   if (filters.uid) constraints.push(where('uid', '==', filters.uid))
-
   constraints.push(orderBy('createdAt', 'desc'))
   if (filters.limit) constraints.push(limit(filters.limit))
 
-  const snap = await getDocs(query(q, ...constraints))
+  const snap = await getDocs(query(collection(db, 'listings'), ...constraints))
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
@@ -163,41 +199,26 @@ export async function getListingsBySticker(stickerId) {
 
 export async function deactivateListing(listingId) {
   await updateDoc(doc(db, 'listings', listingId), {
-    activo: false,
-    updatedAt: serverTimestamp(),
+    activo: false, updatedAt: serverTimestamp(),
   })
 }
 
 export async function updateListing(listingId, data) {
   await updateDoc(doc(db, 'listings', listingId), {
-    ...data,
-    updatedAt: serverTimestamp(),
+    ...data, updatedAt: serverTimestamp(),
   })
 }
 
-// ============================================================
-// BUSCAR MATCHES: usuarios que tienen lo que me falta y viceversa
-// ============================================================
+// ── MATCHES ───────────────────────────────────────────────────
 
-/**
- * Busca usuarios cuyo catálogo tenga repetidas que yo necesito
- * Returns array de { uid, displayName, whatsapp, matches: [stickerId] }
- */
 export async function findMatches(uid) {
   const myCatalog = await getUserCatalog(uid)
-
   const missingIds = Object.entries(myCatalog)
-    .filter(([, v]) => v.status === 'falta')
-    .map(([k]) => k)
-
-  const myRepeated = Object.entries(myCatalog)
-    .filter(([, v]) => v.status === 'repetida')
-    .map(([k]) => k)
+    .filter(([, v]) => v.status === 'falta').map(([k]) => k)
 
   if (!missingIds.length) return []
 
-  // Buscar listings de intercambio que tengan alguna de mis faltantes
-  const chunkSize = 10 // Firestore limit para array-contains-any
+  const chunkSize = 10
   const chunks = []
   for (let i = 0; i < missingIds.length; i += chunkSize) {
     chunks.push(missingIds.slice(i, i + chunkSize))
@@ -216,6 +237,55 @@ export async function findMatches(uid) {
       if (listing.uid !== uid) results.push(listing)
     })
   }
-
   return results
+}
+
+// ── COMENTARIOS / MURO SOCIAL ─────────────────────────────────
+// Colección: comments/{commentId}
+// { uid, displayName, pais, texto, createdAt }
+
+export async function postComment(uid, texto) {
+  const userSnap = await getDoc(doc(db, 'users', uid))
+  const user = userSnap.data()
+  await addDoc(collection(db, 'comments'), {
+    uid,
+    displayName: user.displayName,
+    pais: user.pais || '',
+    texto: texto.trim(),
+    createdAt: serverTimestamp(),
+  })
+}
+
+export async function getComments(maxItems = 30) {
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'comments'),
+      orderBy('createdAt', 'desc'),
+      limit(maxItems)
+    ))
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  } catch {
+    return []
+  }
+}
+
+export async function deleteComment(commentId) {
+  await deleteDoc(doc(db, 'comments', commentId))
+}
+
+// ── STATS GLOBALES ────────────────────────────────────────────
+
+export async function getGlobalStats() {
+  try {
+    const [usersSnap, listingsSnap] = await Promise.all([
+      getCountFromServer(collection(db, 'users')),
+      getCountFromServer(query(collection(db, 'listings'), where('activo', '==', true))),
+    ])
+    return {
+      usuarios: usersSnap.data().count,
+      publicaciones: listingsSnap.data().count,
+    }
+  } catch {
+    return { usuarios: 0, publicaciones: 0 }
+  }
 }
