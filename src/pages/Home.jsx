@@ -2,53 +2,23 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../lib/store'
 
-const API_KEY = '54687b12fffc7622033dc1406570b5fc'
-const API_URL = 'https://v3.football.api-sports.io'
+const FD_TOKEN = '898839288bc1474bac83339edc569780'
+const FD_URL = 'https://api.football-data.org/v4'
+// Mundial 2026 = competición WC en football-data.org
+const WC_CODE = 'WC'
 
-// Mundial 2026: League ID 1, también probar con otros IDs
-// La API a veces usa season=2026 o season=2025 dependiendo de cuándo cargaron los datos
-async function fetchWC(path, params = {}) {
+async function fdFetch(path) {
   try {
-    const q = new URLSearchParams(params)
-    const res = await fetch(`${API_URL}/${path}?${q}`, {
-      headers: { 'x-apisports-key': API_KEY }
+    const res = await fetch(`${FD_URL}${path}`, {
+      headers: { 'X-Auth-Token': FD_TOKEN }
     })
     if (!res.ok) return null
-    const data = await res.json()
-    if (data.errors && Object.keys(data.errors).length > 0) return null
-    return data.response || []
+    return await res.json()
   } catch {
     return null
   }
 }
 
-// Intenta varias combinaciones de liga/temporada para el Mundial
-async function fetchFixturesWC(extra = {}) {
-  // Intentar en orden: liga oficial Mundial en 2026, luego 2025
-  const attempts = [
-    { league: 1, season: 2026, ...extra },
-    { league: 1, season: 2025, ...extra },
-  ]
-  for (const params of attempts) {
-    const res = await fetchWC('fixtures', params)
-    if (res && res.length > 0) return res
-  }
-  return []
-}
-
-async function fetchStandings() {
-  const attempts = [
-    { league: 1, season: 2026 },
-    { league: 1, season: 2025 },
-  ]
-  for (const params of attempts) {
-    const res = await fetchWC('standings', params)
-    if (res && res.length > 0) return res
-  }
-  return []
-}
-
-// Cromos más buscados con imágenes reales de jugadores (Wikimedia/públicas)
 const HOT_STICKERS = [
   { id: '47', pais: 'Argentina', jugador: 'Lionel Messi', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%292.jpg/220px-Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%292.jpg', grupo: 'B', tipo: 'MVP ★' },
   { id: '123', pais: 'Brasil', jugador: 'Vinicius Jr.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Vinicius_Junior_2023.jpg/220px-Vinicius_Junior_2023.jpg', grupo: 'D', tipo: 'MVP ★' },
@@ -60,12 +30,14 @@ const HOT_STICKERS = [
   { id: '156', pais: 'Alemania', jugador: 'Jamal Musiala', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Jamal_Musiala_2022_%28cropped%29.jpg/220px-Jamal_Musiala_2022_%28cropped%29.jpg', grupo: 'E', tipo: 'MVP ★' },
 ]
 
-function MatchRow({ fixture }) {
-  const { fixture: f, teams, goals } = fixture
-  const isLive = ['1H','HT','2H','ET','P','LIVE'].includes(f.status.short)
-  const isFinished = f.status.short === 'FT'
-  const isPending = f.status.short === 'NS'
-  const minute = f.status.elapsed
+function MatchRow({ match }) {
+  const isLive = match.status === 'IN_PLAY' || match.status === 'HALFTIME' || match.status === 'PAUSED'
+  const isFinished = match.status === 'FINISHED'
+  const isPending = match.status === 'TIMED' || match.status === 'SCHEDULED'
+  const minute = match.minute
+
+  const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home
+  const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away
 
   return (
     <div style={{
@@ -75,57 +47,50 @@ function MatchRow({ fixture }) {
       borderRadius: 8,
       border: `1px solid ${isLive ? 'rgba(255,68,68,0.25)' : 'rgba(255,255,255,0.06)'}`,
     }}>
-      {/* Status */}
       <div style={{ minWidth: 52, textAlign: 'center' }}>
         {isLive ? (
           <span style={{ fontSize: 10, color: '#ff4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'center' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#ff4444', display: 'inline-block', animation: 'blink 1s infinite' }} />
-            {minute}'
+            {minute ? `${minute}'` : 'VIVO'}
           </span>
         ) : isFinished ? (
           <span style={{ fontSize: 10, color: 'var(--gris-500)' }}>FIN</span>
         ) : (
           <span style={{ fontSize: 10, color: 'var(--gris-300)' }}>
-            {new Date(f.date).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
+            {new Date(match.utcDate).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
       </div>
-
-      {/* Home */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{teams.home.name}</span>
-        {teams.home.logo && <img src={teams.home.logo} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
+        {match.homeTeam?.crest && <img src={match.homeTeam.crest} style={{ width: 20, height: 20, objectFit: 'contain' }} onError={e => e.target.style.display='none'} />}
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{match.homeTeam?.shortName || match.homeTeam?.name}</span>
       </div>
-
-      {/* Score */}
       <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 20, letterSpacing: 2, color: isLive ? 'var(--verde)' : isFinished ? 'white' : 'var(--gris-500)', minWidth: 52, textAlign: 'center' }}>
-        {isFinished || isLive ? `${goals.home ?? 0} – ${goals.away ?? 0}` : 'VS'}
+        {isFinished || isLive ? `${homeScore ?? 0} – ${awayScore ?? 0}` : 'VS'}
       </div>
-
-      {/* Away */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-        {teams.away.logo && <img src={teams.away.logo} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{teams.away.name}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{match.awayTeam?.shortName || match.awayTeam?.name}</span>
+        {match.awayTeam?.crest && <img src={match.awayTeam.crest} style={{ width: 20, height: 20, objectFit: 'contain' }} onError={e => e.target.style.display='none'} />}
       </div>
     </div>
   )
 }
 
-function StandingMini({ group, groupIndex }) {
+function StandingMini({ group }) {
   return (
     <div>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--verde)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
-        {group[0]?.group || `Grupo ${groupIndex + 1}`}
+        {group.stage === 'GROUP_STAGE' ? `Grupo ${group.group?.replace('GROUP_', '') || ''}` : group.stage}
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
-          {group.slice(0, 4).map((row, i) => (
+          {group.table?.slice(0, 4).map((row, i) => (
             <tr key={row.team.id} style={{ opacity: i >= 2 ? 0.6 : 1 }}>
-              <td style={{ padding: '3px 4px', fontSize: 11, color: i < 2 ? 'var(--verde)' : 'var(--gris-300)', fontWeight: 700, width: 14 }}>{i + 1}</td>
+              <td style={{ padding: '3px 4px', fontSize: 11, color: i < 2 ? 'var(--verde)' : 'var(--gris-300)', fontWeight: 700, width: 14 }}>{row.position}</td>
               <td style={{ padding: '3px 4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {row.team.logo && <img src={row.team.logo} style={{ width: 14, height: 14, objectFit: 'contain' }} />}
-                  <span style={{ fontSize: 11, color: 'white' }}>{row.team.name}</span>
+                  {row.team.crest && <img src={row.team.crest} style={{ width: 14, height: 14, objectFit: 'contain' }} onError={e => e.target.style.display='none'} />}
+                  <span style={{ fontSize: 11, color: 'white' }}>{row.team.shortName || row.team.name}</span>
                 </div>
               </td>
               <td style={{ padding: '3px 4px', fontSize: 12, fontWeight: 700, color: i < 2 ? 'var(--verde)' : 'var(--gris-300)', textAlign: 'right' }}>{row.points}</td>
@@ -146,7 +111,7 @@ export default function Home() {
   const [recentMatches, setRecentMatches] = useState([])
   const [upcomingMatches, setUpcomingMatches] = useState([])
   const [standings, setStandings] = useState([])
-  const [apiStatus, setApiStatus] = useState('loading') // 'loading' | 'ok' | 'soon' | 'error'
+  const [apiStatus, setApiStatus] = useState('loading')
   const [activeTab, setActiveTab] = useState('hoy')
   const [activeGroupPage, setActiveGroupPage] = useState(0)
 
@@ -157,41 +122,40 @@ export default function Home() {
   }, [])
 
   async function loadLive() {
-    const live = await fetchFixturesWC({ live: 'all' })
-    if (live) setLiveMatches(live)
+    const data = await fdFetch(`/competitions/${WC_CODE}/matches?status=LIVE`)
+    if (data?.matches) setLiveMatches(data.matches)
   }
 
   async function loadData() {
     setApiStatus('loading')
     try {
       const today = new Date().toISOString().split('T')[0]
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      const weekLater = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
 
-      const [live, todays, recent, upcoming, stand] = await Promise.all([
-        fetchFixturesWC({ live: 'all' }),
-        fetchFixturesWC({ date: today }),
-        fetchFixturesWC({ last: 5 }),
-        fetchFixturesWC({ next: 5 }),
-        fetchStandings(),
+      const [liveData, todayData, recentData, upcomingData, standData] = await Promise.all([
+        fdFetch(`/competitions/${WC_CODE}/matches?status=LIVE`),
+        fdFetch(`/competitions/${WC_CODE}/matches?dateFrom=${today}&dateTo=${today}`),
+        fdFetch(`/competitions/${WC_CODE}/matches?status=FINISHED&dateFrom=${weekAgo}&dateTo=${today}&limit=6`),
+        fdFetch(`/competitions/${WC_CODE}/matches?status=TIMED&dateFrom=${tomorrow}&dateTo=${weekLater}&limit=6`),
+        fdFetch(`/competitions/${WC_CODE}/standings`),
       ])
 
-      const liveData = live || []
-      const todayData = (todays || []).filter(f => f.fixture.status.short === 'NS')
-      const recentData = (recent || []).filter(f => f.fixture.status.short === 'FT')
-      const upcomingData = upcoming || []
+      const live = liveData?.matches || []
+      const todays = (todayData?.matches || []).filter(m => m.status !== 'FINISHED' && m.status !== 'IN_PLAY')
+      const recent = recentData?.matches || []
+      const upcoming = upcomingData?.matches || []
+      const stand = standData?.standings || []
 
-      setLiveMatches(liveData)
-      setTodayMatches(todayData)
-      setRecentMatches(recentData)
-      setUpcomingMatches(upcomingData)
+      setLiveMatches(live)
+      setTodayMatches(todays)
+      setRecentMatches(recent.reverse())
+      setUpcomingMatches(upcoming)
+      setStandings(stand)
 
-      if (stand && stand.length > 0) {
-        const groups = stand[0]?.league?.standings || []
-        setStandings(groups)
+      if (live.length > 0 || recent.length > 0 || todays.length > 0 || upcoming.length > 0) {
         setApiStatus('ok')
-      } else if (liveData.length > 0 || recentData.length > 0 || todayData.length > 0) {
-        setApiStatus('ok')
-      } else if (upcomingData.length > 0) {
-        setApiStatus('soon')
       } else {
         setApiStatus('soon')
       }
@@ -218,14 +182,14 @@ export default function Home() {
             EN VIVO
           </span>
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', fontSize: 12 }}>
-            {liveMatches.map(f => (
-              <span key={f.fixture.id} style={{ whiteSpace: 'nowrap', color: 'var(--gris-300)' }}>
-                <strong style={{ color: 'white' }}>{f.teams.home.name}</strong>
+            {liveMatches.map(m => (
+              <span key={m.id} style={{ whiteSpace: 'nowrap', color: 'var(--gris-300)' }}>
+                <strong style={{ color: 'white' }}>{m.homeTeam?.shortName}</strong>
                 <span style={{ color: 'var(--verde)', fontFamily: 'Bebas Neue, sans-serif', fontSize: 16, margin: '0 6px', letterSpacing: 1 }}>
-                  {f.goals.home ?? 0}–{f.goals.away ?? 0}
+                  {m.score?.fullTime?.home ?? 0}–{m.score?.fullTime?.away ?? 0}
                 </span>
-                <strong style={{ color: 'white' }}>{f.teams.away.name}</strong>
-                <span style={{ color: '#ff6b6b', marginLeft: 5 }}>{f.fixture.status.elapsed}'</span>
+                <strong style={{ color: 'white' }}>{m.awayTeam?.shortName}</strong>
+                {m.minute && <span style={{ color: '#ff6b6b', marginLeft: 5 }}>{m.minute}'</span>}
               </span>
             ))}
           </div>
@@ -278,7 +242,7 @@ export default function Home() {
             )}
 
             <div style={{ display: 'flex', gap: 28, paddingTop: 28, borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 28 }}>
-              {[['584+','Cromos'],['48','Equipos'],['12','Grupos'],['T-48','Troquelados']].map(([n, l]) => (
+              {[['584+','Cromos'],['48','Equipos'],['12','Grupos'],['T-48','Troquelados']].map(([n,l]) => (
                 <div key={l}>
                   <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 22, color: 'var(--dorado)', letterSpacing: 1 }}>{n}</div>
                   <div style={{ fontSize: 10, color: 'var(--gris-300)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{l}</div>
@@ -292,15 +256,13 @@ export default function Home() {
             <div style={{ padding: '13px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>⚽ Mundial 2026</span>
               {hasLive && <span style={{ background: 'var(--rojo)', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{liveMatches.length} EN VIVO</span>}
-              {apiStatus === 'soon' && <span style={{ fontSize: 11, color: 'var(--dorado)' }}>⏳ Pronto</span>}
             </div>
 
-            {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               {[
-                { key: 'hoy', label: hasLive ? `🔴 En vivo (${liveMatches.length})` : 'Hoy' },
+                { key: 'hoy', label: hasLive ? `🔴 En vivo (${liveMatches.length})` : `Hoy (${allToday.length})` },
                 { key: 'proximos', label: `Próximos (${upcomingMatches.length})` },
-                { key: 'resultados', label: 'Resultados' },
+                { key: 'resultados', label: `Resultados (${recentMatches.length})` },
                 { key: 'posiciones', label: 'Tabla' },
               ].map(t => (
                 <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
@@ -314,7 +276,7 @@ export default function Home() {
               ))}
             </div>
 
-            <div style={{ padding: 14, maxHeight: 360, overflowY: 'auto' }}>
+            <div style={{ padding: 14, maxHeight: 380, overflowY: 'auto' }}>
               {apiStatus === 'loading' ? (
                 <div style={{ textAlign: 'center', padding: 32, color: 'var(--gris-300)', fontSize: 13 }}>
                   <div style={{ fontSize: 24, marginBottom: 8 }}>⚽</div>
@@ -328,31 +290,26 @@ export default function Home() {
                     El torneo arranca el <strong style={{ color: 'var(--dorado)' }}>11 de junio de 2026</strong>.<br />
                     Los partidos aparecerán aquí en tiempo real cuando inicie.
                   </div>
-                  <div style={{ marginTop: 16, padding: '10px 14px', background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, color: 'var(--dorado)', fontWeight: 600 }}>🇺🇸 🇨🇦 🇲🇽 Sede: EUA, Canadá y México</div>
-                    <div style={{ fontSize: 11, color: 'var(--gris-300)', marginTop: 3 }}>48 equipos · 104 partidos · 16 sedes</div>
-                  </div>
                 </div>
               ) : activeTab === 'hoy' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {allToday.length === 0 ? (
                     <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No hay partidos hoy</p>
-                  ) : allToday.map(f => <MatchRow key={f.fixture.id} fixture={f} />)}
+                  ) : allToday.map(m => <MatchRow key={m.id} match={m} />)}
                 </div>
               ) : activeTab === 'proximos' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {upcomingMatches.length === 0 ? (
                     <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Sin próximos partidos</p>
-                  ) : upcomingMatches.map(f => <MatchRow key={f.fixture.id} fixture={f} />)}
+                  ) : upcomingMatches.map(m => <MatchRow key={m.id} match={m} />)}
                 </div>
               ) : activeTab === 'resultados' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {recentMatches.length === 0 ? (
                     <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Sin resultados recientes</p>
-                  ) : recentMatches.map(f => <MatchRow key={f.fixture.id} fixture={f} />)}
+                  ) : recentMatches.map(m => <MatchRow key={m.id} match={m} />)}
                 </div>
               ) : (
-                // Posiciones
                 <div>
                   {standings.length === 0 ? (
                     <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Posiciones disponibles cuando inicie el torneo</p>
@@ -360,7 +317,7 @@ export default function Home() {
                     <>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         {visibleGroups.map((group, i) => (
-                          <StandingMini key={i} group={group} groupIndex={activeGroupPage * GROUPS_PER_PAGE + i} />
+                          <StandingMini key={i} group={group} />
                         ))}
                       </div>
                       {groupPages > 1 && (
@@ -388,29 +345,17 @@ export default function Home() {
           </div>
           <Link to="/catalogo" style={{ fontSize: 13, color: 'var(--verde)', textDecoration: 'none' }}>Ver álbum completo →</Link>
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 }}>
           {HOT_STICKERS.map(s => (
             <div key={s.id} style={{ background: 'var(--negro-3)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 12, overflow: 'hidden', transition: 'all 0.2s', cursor: 'pointer' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,215,0,0.15)'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)' }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(255,215,0,0.15)'; e.currentTarget.style.borderColor='rgba(255,215,0,0.5)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.borderColor='rgba(255,215,0,0.2)' }}
             >
-              {/* Foto */}
               <div style={{ height: 160, background: 'linear-gradient(135deg, rgba(0,200,83,0.1), rgba(255,215,0,0.05))', position: 'relative', overflow: 'hidden' }}>
-                <img
-                  src={s.img}
-                  alt={s.jugador}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
-                  onError={e => { e.target.style.display = 'none' }}
-                />
-                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: 'var(--dorado)', fontWeight: 700 }}>
-                  #{s.id}
-                </div>
-                <div style={{ position: 'absolute', top: 8, right: 8, background: 'linear-gradient(135deg, #c9a800, #ffd700)', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#000', fontWeight: 700 }}>
-                  {s.tipo}
-                </div>
+                <img src={s.img} alt={s.jugador} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} onError={e => e.target.style.display='none'} />
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: 'var(--dorado)', fontWeight: 700 }}>#{s.id}</div>
+                <div style={{ position: 'absolute', top: 8, right: 8, background: 'linear-gradient(135deg,#c9a800,#ffd700)', borderRadius: 4, padding: '2px 6px', fontSize: 9, color: '#000', fontWeight: 700 }}>{s.tipo}</div>
               </div>
-              {/* Info */}
               <div style={{ padding: '10px 12px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 2 }}>{s.jugador}</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -434,8 +379,8 @@ export default function Home() {
             { icon: '🏆', title: 'Ranking social', desc: 'Compite con otros coleccionistas. Sube en el ranking mientras completas tu álbum.', color: '#0088ff' },
           ].map(f => (
             <div key={f.title} className="card" style={{ padding: 20, transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = f.color + '33'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'none' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor=f.color+'33'; e.currentTarget.style.transform='translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='none' }}
             >
               <div style={{ fontSize: 28, marginBottom: 10 }}>{f.icon}</div>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'white' }}>{f.title}</div>
@@ -446,16 +391,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CTA */}
       {!user && (
         <div style={{ padding: '0 24px 60px', maxWidth: 'var(--max-w)', margin: '0 auto' }}>
           <div style={{ background: 'linear-gradient(135deg, rgba(0,200,83,0.07) 0%, rgba(255,215,0,0.04) 100%)', border: '1px solid rgba(0,200,83,0.18)', borderRadius: 20, padding: '44px 40px', textAlign: 'center' }}>
-            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 42, color: 'white', marginBottom: 8, letterSpacing: 1 }}>
-              ¿Ya tienes el álbum?
-            </h2>
-            <p style={{ color: 'var(--gris-300)', marginBottom: 24, fontSize: 15 }}>
-              Crea tu cuenta gratis y empieza a registrar tu colección
-            </p>
+            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 42, color: 'white', marginBottom: 8, letterSpacing: 1 }}>¿Ya tienes el álbum?</h2>
+            <p style={{ color: 'var(--gris-300)', marginBottom: 24, fontSize: 15 }}>Crea tu cuenta gratis y empieza a registrar tu colección</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/registro" className="btn btn-primary btn-lg">Crear cuenta gratis</Link>
               <Link to="/login" className="btn btn-ghost btn-lg">Ya tengo cuenta</Link>
