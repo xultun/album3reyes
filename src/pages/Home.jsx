@@ -334,7 +334,7 @@ export default function Home() {
             </p>
           </div>
           <a
-            href="https://github.com/xultun/album3reyes/blob/main/Guia_Album3Reyes.pdf"
+            href="https://drive.google.com/file/d/1LFjSGIfPVojikVB6ZgWTHAHw-Pe_n5dE/view?usp=sharing"
             target="_blank"
             rel="noopener noreferrer"
             style={{
