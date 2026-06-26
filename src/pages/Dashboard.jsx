@@ -260,7 +260,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── STATS GLOBALES ─────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 28 }}>
+      <div className="dash-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 28 }}>
         {[
           { val: globalStats.usuarios, label: 'Coleccionistas', icon: '👥', color: 'var(--verde)' },
           { val: globalStats.publicaciones, label: 'Publicaciones activas', icon: '📢', color: '#a855f7' },
@@ -278,7 +278,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── MAIN GRID ──────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 340px', gap: 16, marginBottom: 16 }}>
+      <div className="dash-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 340px', gap: 16, marginBottom: 16 }}>
 
         {/* Progreso del álbum */}
         <div className="card card-padded" style={{ gridColumn: '1 / 2' }}>
@@ -394,7 +394,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── SEGUNDA FILA ───────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="dash-second-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
 
         {/* Ranking */}
         <div className="card card-padded">
@@ -506,7 +506,7 @@ export default function Dashboard() {
       {/* ── ACCESOS RÁPIDOS ─────────────────────────────── */}
       <div className="card" style={{ padding: '20px 24px' }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 16 }}>Accesos rápidos</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+        <div className="dash-quick-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
           {[
             { to: '/catalogo', icon: '📋', label: 'Mi álbum', desc: 'Marcar cromos', color: 'var(--verde)' },
             { to: '/mercado', icon: '🔄', label: 'Intercambios', desc: `${stats.repetida} repetidas disponibles`, color: '#a855f7' },
