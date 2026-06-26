@@ -62,8 +62,18 @@ export const useStore = create((set, get) => ({
     // Persistir en Firestore (siempre, incluyendo null para borrar)
     try {
       await updateStickerStatus(user.uid, id, status, cantidad)
+      console.log('✅ Guardado en Firestore:', id, status)
     } catch (err) {
-      console.error('Error guardando sticker:', err)
+      console.error('❌ Error guardando sticker en Firestore:', err)
+      // Revertir UI si falla Firestore
+      if (status === null) {
+        set({ catalog: { ...get().catalog, [id]: catalog[id] } })
+      } else {
+        const revert = { ...get().catalog }
+        if (catalog[id]) revert[id] = catalog[id]
+        else delete revert[id]
+        set({ catalog: revert })
+      }
     }
   },
 
