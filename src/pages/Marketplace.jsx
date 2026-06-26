@@ -21,30 +21,47 @@ function ListingCard({ listing, isOwn, onDeactivate }) {
   const initials = listing.displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
   const typeLabels = { venta: '💰 Venta', intercambio: '🔄 Intercambio', busqueda: '🔍 Busco' }
   const typeColors = { venta: 'badge-venta', intercambio: 'badge-intercambio', busqueda: 'badge-falta' }
+  const typeBorderColor = { venta: 'rgba(255,215,0,0.2)', intercambio: 'rgba(168,85,247,0.2)', busqueda: 'rgba(0,136,255,0.2)' }
 
   const waMsg = listing.type === 'venta'
     ? `Hola ${listing.displayName}, vi tu publicación en el Álbum 3 Reyes y me interesa comprar los cromos: ${listing.stickers.join(', ')} por ${listing.precio} ${listing.moneda}`
     : `Hola ${listing.displayName}, vi que tienes los cromos ${listing.stickers.join(', ')} en el Álbum 3 Reyes. ¿Podemos hacer un intercambio?`
 
+  // Obtener info de los stickers desde stickerInfo si existe
+  const stickerDetails = listing.stickerInfo || []
+
   return (
-    <div className="card listing-card">
-      {/* Foto del sticker si existe */}
+    <div className="card listing-card" style={{ border: `1px solid ${typeBorderColor[listing.type] || 'rgba(255,255,255,0.07)'}` }}>
+
+      {/* Foto del sticker */}
       {listing.photoUrl && (
-        <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', height: 160, background: 'var(--negro-4)' }}>
-          <img src={listing.photoUrl} alt="Foto del cromo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', height: 180, background: 'var(--negro-4)', position: 'relative' }}>
+          <img src={listing.photoUrl} alt="Foto del cromo"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={e => e.target.parentElement.style.display='none'}
+          />
+          <div style={{ position: 'absolute', top: 8, left: 8 }}>
+            <span className={`badge ${typeColors[listing.type]}`}>{typeLabels[listing.type]}</span>
+          </div>
+          {listing.precio && (
+            <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 700, color: 'var(--dorado)' }}>
+              {listing.moneda} {listing.precio}
+            </div>
+          )}
         </div>
       )}
 
+      {/* Header usuario */}
       <div className="listing-header">
         <div className="listing-avatar">{initials}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {listing.displayName}
             {listing.pais && <span style={{ fontSize: 11, color: 'var(--gris-300)' }}>🌍 {listing.pais}</span>}
           </div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
-            <span className={`badge ${typeColors[listing.type]}`}>{typeLabels[listing.type]}</span>
-            {listing.precio && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+            {!listing.photoUrl && <span className={`badge ${typeColors[listing.type]}`}>{typeLabels[listing.type]}</span>}
+            {listing.precio && !listing.photoUrl && (
               <span style={{ fontSize: 12, color: 'var(--dorado)', fontWeight: 600 }}>
                 {listing.moneda} {listing.precio}
               </span>
@@ -58,19 +75,41 @@ function ListingCard({ listing, isOwn, onDeactivate }) {
         )}
       </div>
 
-      <div className="listing-stickers">
-        {listing.stickers.map(id => (
-          <span key={id} className="sticker-pill">#{id}</span>
-        ))}
+      {/* Info de stickers con nombre del jugador */}
+      <div style={{ marginTop: 10, marginBottom: 8 }}>
+        {stickerDetails.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {stickerDetails.slice(0, 4).map(s => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 15, color: 'var(--verde)', minWidth: 36 }}>#{s.id}</span>
+                <span style={{ fontSize: 12, color: 'white', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {s.label?.replace(`${s.pais} — `, '') || s.label}
+                </span>
+                {s.grupo && <span style={{ fontSize: 10, color: 'var(--gris-500)', background: 'var(--negro-4)', padding: '1px 5px', borderRadius: 4 }}>G-{s.grupo}</span>}
+              </div>
+            ))}
+            {stickerDetails.length > 4 && (
+              <div style={{ fontSize: 11, color: 'var(--gris-500)', paddingLeft: 8 }}>
+                +{stickerDetails.length - 4} cromos más
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="listing-stickers">
+            {listing.stickers.map(id => (
+              <span key={id} className="sticker-pill">#{id}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {listing.descripcion && (
-        <p style={{ fontSize: 13, color: 'var(--gris-300)', marginTop: 8, marginBottom: 8, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: 'var(--gris-300)', marginBottom: 10, lineHeight: 1.5, padding: '6px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, borderLeft: '2px solid var(--gris-600)' }}>
           {listing.descripcion}
         </p>
       )}
 
-      <div style={{ marginTop: 10 }}>
+      <div style={{ marginTop: 8 }}>
         <WhatsAppButton numero={listing.whatsapp} mensaje={waMsg} />
       </div>
     </div>
