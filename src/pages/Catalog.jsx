@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useStore } from '../lib/store'
 import {
   ALL_STICKERS, GROUPS, TROQUELADOS,
-  ESTADIOS, CAMPEONES, PRIMERA_VEZ, getMVPs
+  ESTADIOS, CAMPEONES, PRIMERA_VEZ, STICKERS_EQUIPOS
 } from '../lib/albumData'
 import toast from 'react-hot-toast'
 
@@ -35,25 +35,57 @@ function StickerCard({ sticker, status, onToggle }) {
   )
 }
 
-function GroupSection({ groupKey, stickers, catalog, onToggle }) {
-  const stats = {
-    tengo: stickers.filter(s => catalog[String(s.id)]?.status === 'tengo').length,
-    total: stickers.length,
-  }
+function PaisSection({ pais, grupo, stickers, catalog, onToggle }) {
+  const [collapsed, setCollapsed] = useState(false)
+  const tengo = stickers.filter(s => catalog[String(s.id)]?.status === 'tengo').length
+  const total = stickers.length
+  const pct = total > 0 ? Math.round((tengo / total) * 100) : 0
+  const firstId = stickers[0]?.id
+  const lastId = stickers[stickers.length - 1]?.id
+
   return (
-    <div style={{ marginBottom: 32 }}>
-      <div className="group-header">
-        <div className="group-badge">{groupKey}</div>
-        Grupo {groupKey}
-        <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 400, opacity: 0.8 }}>
-          {stats.tengo}/{stats.total}
-        </span>
+    <div style={{ marginBottom: 16 }}>
+      <div
+        onClick={() => setCollapsed(!collapsed)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'var(--negro-4)', border: '1px solid rgba(255,255,255,0.07)',
+          padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+          cursor: 'pointer', marginBottom: collapsed ? 0 : 10,
+          transition: 'all 0.15s',
+        }}
+      >
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'rgba(0,200,83,0.15)', border: '1px solid rgba(0,200,83,0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700, color: 'var(--verde)', flexShrink: 0,
+        }}>
+          {grupo}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'white' }}>{pais}</div>
+          <div style={{ fontSize: 11, color: 'var(--gris-500)' }}>
+            #{firstId} – #{lastId} · {total} cromos
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', minWidth: 80 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: pct === 100 ? 'var(--verde)' : pct > 50 ? 'var(--dorado)' : 'var(--gris-300)' }}>
+            {tengo}/{total}
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 99, height: 3, marginTop: 3 }}>
+            <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: 'var(--verde)', transition: 'width 0.4s ease' }} />
+          </div>
+        </div>
+        <span style={{ color: 'var(--gris-500)', fontSize: 12 }}>{collapsed ? '▼' : '▲'}</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: 6 }}>
-        {stickers.map(s => (
-          <StickerCard key={s.id} sticker={s} status={catalog[String(s.id)]} onToggle={onToggle} />
-        ))}
-      </div>
+      {!collapsed && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(86px, 1fr))', gap: 5 }}>
+          {stickers.map(s => (
+            <StickerCard key={s.id} sticker={s} status={catalog[String(s.id)]} onToggle={onToggle} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -125,14 +157,21 @@ export default function Catalog() {
     return stickers
   }, [catalog, view, search, selectedGroup])
 
-  // Stickers agrupados por grupo para la vista principal
-  const stickersByGroup = useMemo(() => {
-    const grouped = {}
-    const groupStickers = ALL_STICKERS.filter(s => s.grupo)
-    Object.keys(GROUPS).forEach(g => {
-      grouped[g] = groupStickers.filter(s => s.grupo === g)
+  // Stickers agrupados por país en orden del álbum
+  const paisesList = useMemo(() => {
+    const seen = []
+    const result = []
+    STICKERS_EQUIPOS.forEach(s => {
+      if (s.pais && !seen.includes(s.pais)) {
+        seen.push(s.pais)
+        result.push({
+          pais: s.pais,
+          grupo: s.grupo,
+          stickers: STICKERS_EQUIPOS.filter(x => x.pais === s.pais)
+        })
+      }
     })
-    return grouped
+    return result
   }, [])
 
   return (
@@ -229,14 +268,15 @@ export default function Catalog() {
             catalog={catalog}
             onToggle={handleToggle}
           />
-          {/* Grupos A-L con plantillas (17-568) */}
-          {Object.keys(GROUPS)
-            .filter(g => selectedGroup === 'all' || g === selectedGroup)
-            .map(g => (
-              <GroupSection
-                key={g}
-                groupKey={g}
-                stickers={stickersByGroup[g] || []}
+          {/* Plantillas por país en orden del álbum (17-568) */}
+          {paisesList
+            .filter(p => selectedGroup === 'all' || p.grupo === selectedGroup)
+            .map(({ pais, grupo, stickers }) => (
+              <PaisSection
+                key={pais}
+                pais={pais}
+                grupo={grupo}
+                stickers={stickers}
                 catalog={catalog}
                 onToggle={handleToggle}
               />
