@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../lib/store'
 import { getListings, createListing, deactivateListing, findMatches } from '../lib/db'
 import { ALL_STICKERS } from '../lib/albumData'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { storage } from '../lib/firebase'
 import toast from 'react-hot-toast'
 
 function WhatsAppButton({ numero, mensaje }) {
@@ -129,12 +127,26 @@ function NewListingModal({ onClose, onCreated }) {
     try {
       let photoUrl = null
 
-      // Subir foto si hay una
+      // Subir foto a Imgur (gratuito, sin cuenta)
       if (photo) {
         setUploadingPhoto(true)
-        const photoRef = ref(storage, `listings/${user.uid}/${Date.now()}_${photo.name}`)
-        await uploadBytes(photoRef, photo)
-        photoUrl = await getDownloadURL(photoRef)
+        try {
+          const formData = new FormData()
+          formData.append('image', photo)
+          const res = await fetch('https://api.imgur.com/3/image', {
+            method: 'POST',
+            headers: { Authorization: 'Client-ID 546c25a59c58ad7' },
+            body: formData,
+          })
+          const data = await res.json()
+          if (data.success) {
+            photoUrl = data.data.link
+          } else {
+            toast.error('Error subiendo la foto, se publicará sin imagen')
+          }
+        } catch {
+          toast.error('Error subiendo la foto, se publicará sin imagen')
+        }
         setUploadingPhoto(false)
       }
 
