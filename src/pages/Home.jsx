@@ -312,6 +312,49 @@ export default function Home() {
         </div>
       </div>
 
+      {/* GUÍA PDF */}
+      <div style={{ padding: '0 24px 32px', maxWidth: 'var(--max-w)', margin: '0 auto' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(255,215,0,0.07) 0%, rgba(0,200,83,0.05) 100%)',
+          border: '1px solid rgba(255,215,0,0.25)',
+          borderRadius: 16,
+          padding: '24px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 24,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{ fontSize: 48, flexShrink: 0 }}>📖</div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 22, color: 'var(--dorado)', letterSpacing: 1, marginBottom: 6 }}>
+              ¿No sabes cómo empezar?
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--gris-300)', lineHeight: 1.6, marginBottom: 0 }}>
+              Descarga nuestra guía rápida con todo lo que necesitas saber: cómo registrarte, registrar tus cromos y publicar en el mercado.
+            </p>
+          </div>
+          <a
+            href="https://github.com/xultun/album3reyes/blob/main/Guia_Album3Reyes.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '12px 22px', borderRadius: 10, textDecoration: 'none',
+              background: 'var(--dorado)', color: '#000', fontWeight: 700, fontSize: 14,
+              boxShadow: '0 0 16px rgba(255,215,0,0.3)',
+              transition: 'all 0.2s', flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(255,215,0,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 0 16px rgba(255,215,0,0.3)' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM12 17l-4-4h2.5v-4h3v4H16l-4 4z"/>
+            </svg>
+            Descargar guía PDF
+          </a>
+        </div>
+      </div>
+
       {/* FEATURES */}
       <div style={{ padding: '0 24px 52px', maxWidth: 'var(--max-w)', margin: '0 auto' }}>
         <h2 className="section-title" style={{ marginBottom: 20 }}>Todo para tu <span>colección</span></h2>
