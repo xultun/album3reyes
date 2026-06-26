@@ -141,7 +141,7 @@ export default function Home() {
 
       {/* HERO */}
       <div style={{ background: 'linear-gradient(180deg, rgba(0,200,83,0.05) 0%, transparent 70%)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '56px 24px 48px' }}>
-        <div style={{ maxWidth: 'var(--max-w)', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 480px', gap: 48, alignItems: 'start' }}>
+        <div className="hero-grid" style={{ maxWidth: 'var(--max-w)', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 480px', gap: 48, alignItems: 'start' }}>
 
           {/* LEFT */}
           <div>
