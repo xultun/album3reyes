@@ -187,8 +187,8 @@ export default function Catalog() {
       </div>
 
       {/* Controles */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="tabs" style={{ flex: 'none' }}>
+      <div className="catalog-controls" style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="catalog-tabs tabs" style={{ flex: 'none' }}>
           {[
             { key: 'grupos', label: 'Por grupos' },
             { key: 'todos', label: 'Todos' },
