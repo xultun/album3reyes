@@ -8,7 +8,7 @@ Comunidad de coleccionistas del Álbum 3 Reyes del Mundial.
 - **GitHub Pages** — Hosting gratuito
 - **GitHub Actions** — Deploy automático al hacer push a `main`
 
----
+--- 
  
 ## Configuración inicial (paso a paso)   
 
