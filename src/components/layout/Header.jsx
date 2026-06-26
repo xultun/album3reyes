@@ -35,6 +35,9 @@ export default function Header() {
 
         {user ? (
           <>
+            <NavLink to="/dashboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+              <span>🏠</span> <span>Dashboard</span>
+            </NavLink>
             <NavLink to="/catalogo" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               <span>📋</span> <span>Mi Álbum</span>
             </NavLink>
