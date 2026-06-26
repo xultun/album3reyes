@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useStore } from '../lib/store'
 import {
   ALL_STICKERS, GROUPS, TROQUELADOS,
-  CAMPEONES as ULTIMOS_CAMPEONES, PRIMERA_VEZ, getMVPs
+  ESTADIOS, CAMPEONES, PRIMERA_VEZ, getMVPs
 } from '../lib/albumData'
 import toast from 'react-hot-toast'
 
@@ -128,7 +128,7 @@ export default function Catalog() {
   // Stickers agrupados por grupo para la vista principal
   const stickersByGroup = useMemo(() => {
     const grouped = {}
-    const groupStickers = ALL_STICKERS.filter(s => s.section === 'grupos' || s.section === 'mvp')
+    const groupStickers = ALL_STICKERS.filter(s => s.grupo)
     Object.keys(GROUPS).forEach(g => {
       grouped[g] = groupStickers.filter(s => s.grupo === g)
     })
@@ -221,23 +221,15 @@ export default function Catalog() {
       {/* Contenido del álbum */}
       {view === 'grupos' ? (
         <>
-          {/* Sección campeones */}
+          {/* Estadios (1-16) */}
           <SectionBlock
-            title="Los Últimos Campeones"
-            emoji="🏆"
-            stickers={ULTIMOS_CAMPEONES}
+            title="Estadios del Mundial 2026"
+            emoji="🏟️"
+            stickers={ESTADIOS}
             catalog={catalog}
             onToggle={handleToggle}
           />
-          {/* Sección debutantes */}
-          <SectionBlock
-            title="Primera Vez en el Mundial"
-            emoji="🌟"
-            stickers={PRIMERA_VEZ}
-            catalog={catalog}
-            onToggle={handleToggle}
-          />
-          {/* Grupos A-L */}
+          {/* Grupos A-L con plantillas (17-568) */}
           {Object.keys(GROUPS)
             .filter(g => selectedGroup === 'all' || g === selectedGroup)
             .map(g => (
@@ -250,19 +242,27 @@ export default function Catalog() {
               />
             ))
           }
-          {/* Troquelados */}
+          {/* Campeones del Mundo (569-580) */}
           <SectionBlock
-            title="Escudos Troquelados"
-            emoji="🔶"
-            stickers={TROQUELADOS}
+            title="Campeones del Mundo (1978–2022)"
+            emoji="🏆"
+            stickers={CAMPEONES}
             catalog={catalog}
             onToggle={handleToggle}
           />
-          {/* Repechaje */}
+          {/* Primera vez en el Mundial (581-584) */}
           <SectionBlock
-            title="Repechaje / Clasificados"
-            emoji="❓"
-            stickers={ALL_STICKERS.filter(s => s.section === 'repechaje')}
+            title="Primera Vez en el Mundial"
+            emoji="🌟"
+            stickers={PRIMERA_VEZ}
+            catalog={catalog}
+            onToggle={handleToggle}
+          />
+          {/* Escudos Troquelados (T-1 a T-48) */}
+          <SectionBlock
+            title="Escudos Troquelados (T-1 a T-48)"
+            emoji="🔶"
+            stickers={TROQUELADOS}
             catalog={catalog}
             onToggle={handleToggle}
           />
