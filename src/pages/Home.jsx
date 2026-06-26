@@ -336,7 +336,7 @@ export default function Home() {
       </div>
 
       {!user && (
-        <div style={{ padding: '0 24px 60px', maxWidth: 'var(--max-w)', margin: '0 auto' }}>
+        <div style={{ padding: '0 24px 40px', maxWidth: 'var(--max-w)', margin: '0 auto' }}>
           <div style={{ background: 'linear-gradient(135deg, rgba(0,200,83,0.07) 0%, rgba(255,215,0,0.04) 100%)', border: '1px solid rgba(0,200,83,0.18)', borderRadius: 20, padding: '44px 40px', textAlign: 'center' }}>
             <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 42, color: 'white', marginBottom: 8, letterSpacing: 1 }}>¿Ya tienes el álbum?</h2>
             <p style={{ color: 'var(--gris-300)', marginBottom: 24, fontSize: 15 }}>Crea tu cuenta gratis y empieza a registrar tu colección</p>
@@ -347,6 +347,82 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ── SECCIÓN DE DONACIÓN ─────────────────────────── */}
+      <div style={{ padding: '0 24px 60px', maxWidth: 'var(--max-w)', margin: '0 auto' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(255,215,0,0.06) 0%, rgba(255,140,0,0.04) 100%)',
+          border: '1px solid rgba(255,215,0,0.2)',
+          borderRadius: 20,
+          padding: '36px 40px',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Decoración de fondo */}
+          <div style={{ position: 'absolute', top: -20, right: -20, fontSize: 120, opacity: 0.04, pointerEvents: 'none' }}>💛</div>
+          <div style={{ position: 'absolute', bottom: -20, left: -20, fontSize: 100, opacity: 0.04, pointerEvents: 'none' }}>⚽</div>
+
+          <div style={{ fontSize: 36, marginBottom: 10 }}>💛</div>
+          <h3 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 32, color: 'var(--dorado)', letterSpacing: 1, marginBottom: 8 }}>
+            ¿Te gusta la plataforma?
+          </h3>
+          <p style={{ color: 'var(--gris-300)', fontSize: 14, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 20px' }}>
+            Este sitio es <strong style={{ color: 'white' }}>100% gratuito</strong> y fue creado con amor para la comunidad de coleccionistas.
+            Si te ha sido útil, considera apoyar el proyecto con una donación voluntaria. 
+            ¡Cada aporte ayuda a mantenerlo activo y mejorarlo!
+          </p>
+
+          {/* Beneficios de donar */}
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
+            {[
+              { icon: '🚀', text: 'Servidor activo' },
+              { icon: '✨', text: 'Nuevas funciones' },
+              { icon: '🌍', text: 'Comunidad creciente' },
+            ].map(item => (
+              <div key={item.text} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '6px 14px' }}>
+                <span style={{ fontSize: 16 }}>{item.icon}</span>
+                <span style={{ fontSize: 12, color: 'var(--gris-300)' }}>{item.text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Botón PayPal estilizado */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <form action="https://www.paypal.com/donate" method="post" target="_top" style={{ display: 'inline-block' }}>
+              <input type="hidden" name="hosted_button_id" value="6CTWA63KAR3EG" />
+              <button type="submit" style={{
+                background: 'linear-gradient(135deg, #0070ba, #003087)',
+                color: 'white',
+                border: 'none',
+                borderRadius: 12,
+                padding: '14px 32px',
+                fontSize: 16,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                boxShadow: '0 4px 20px rgba(0,112,186,0.4)',
+                transition: 'all 0.2s',
+                fontFamily: 'var(--font-body)',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,112,186,0.6)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,112,186,0.4)' }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+                  <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.59 3.025-2.566 6.382-8.558 6.382H9.826l-1.17 7.43h3.562c.46 0 .85-.333.92-.788l.04-.196.717-4.55.046-.25c.07-.455.46-.788.92-.788h.58c3.755 0 6.696-1.526 7.554-5.94.36-1.84.177-3.377-.773-4.413z"/>
+                </svg>
+                Donar con PayPal
+              </button>
+              <img alt="" border="0" src="https://www.paypal.com/en_PE/i/scr/pixel.gif" width="1" height="1" style={{ display: 'none' }} />
+            </form>
+            <span style={{ fontSize: 11, color: 'var(--gris-500)' }}>
+              🔒 Pago seguro · Cualquier monto ayuda · Totalmente voluntario
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
