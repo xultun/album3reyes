@@ -10,7 +10,7 @@ Comunidad de coleccionistas del Álbum 3 Reyes del Mundial.
 
 ---
  
-## Configuración inicial (paso a paso)  
+## Configuración inicial (paso a paso)   
 
 ### 1. Firebase — Crear proyecto 
 
