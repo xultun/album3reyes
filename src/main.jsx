@@ -35,9 +35,6 @@ function AdminRoute({ children }) {
 }
 
 function HomeRoute() {
-  const { user, authLoading } = useStore()
-  if (authLoading) return null
-  if (user) return <Navigate to="/dashboard" replace />
   return <Home />
 }
 
