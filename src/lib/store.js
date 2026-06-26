@@ -59,9 +59,11 @@ export const useStore = create((set, get) => ({
       set({ catalog: { ...catalog, [id]: { stickerId: id, status, cantidad } } })
     }
 
-    // Persistir en Firestore
-    if (status !== null) {
+    // Persistir en Firestore (siempre, incluyendo null para borrar)
+    try {
       await updateStickerStatus(user.uid, id, status, cantidad)
+    } catch (err) {
+      console.error('Error guardando sticker:', err)
     }
   },
 
