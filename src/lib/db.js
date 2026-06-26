@@ -82,20 +82,25 @@ export async function getUserCatalog(uid) {
 
 export async function updateStickerStatus(uid, stickerId, status, cantidad = 1) {
   const ref = doc(db, 'catalogs', uid, 'stickers', String(stickerId))
-  await setDoc(ref, {
-    stickerId: String(stickerId),
-    status,
-    cantidad,
-    updatedAt: serverTimestamp(),
-  }, { merge: true })
+  
+  if (status === null) {
+    // Borrar el documento si status es null
+    await deleteDoc(ref)
+  } else {
+    await setDoc(ref, {
+      stickerId: String(stickerId),
+      status,
+      cantidad,
+      updatedAt: serverTimestamp(),
+    }, { merge: true })
+  }
 
-  // También guarda en actividad reciente del usuario
-  await logActivity(uid, {
+  // Log actividad (no crítico, no bloquea el guardado)
+  logActivity(uid, {
     type: 'sticker',
     stickerId: String(stickerId),
     status,
-    ts: serverTimestamp(),
-  })
+  }).catch(() => {})
 }
 
 export async function updateMultipleStickers(uid, updates) {
