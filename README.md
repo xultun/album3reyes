@@ -12,7 +12,7 @@ Comunidad de coleccionistas del Álbum 3 Reyes del Mundial.
  
 ## Configuración inicial (paso a paso)  
 
-### 1. Firebase — Crear proyecto
+### 1. Firebase — Crear proyecto 
 
 1. Ve a [console.firebase.google.com](https://console.firebase.google.com)
 2. Clic en **"Añadir proyecto"** → Dale un nombre (ej: `album-3-reyes`)
