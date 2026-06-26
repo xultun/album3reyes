@@ -176,15 +176,14 @@ export default function Admin() {
   const [searchUser, setSearchUser] = useState('')
   const [searchListing, setSearchListing] = useState('')
 
+  const isAdmin = user?.email?.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()
+
   useEffect(() => {
-    if (!authLoading) {
-      if (!user || user.email !== ADMIN_EMAIL) {
-        navigate('/')
-        return
-      }
-      loadAll()
-    }
-  }, [user, authLoading])
+    if (authLoading) return
+    if (!user) { navigate('/login'); return }
+    if (!isAdmin) { navigate('/dashboard'); return }
+    loadAll()
+  }, [user, authLoading, isAdmin])
 
   async function loadAll() {
     setLoading(true)
@@ -284,7 +283,7 @@ export default function Admin() {
     )
   }
 
-  if (!user || user.email !== ADMIN_EMAIL) return null
+  if (!user || !isAdmin) return null
 
   const TABS = [
     { key: 'stats', label: '📊 Estadísticas' },
