@@ -1,23 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../lib/store'
-
-const FD_TOKEN = '898839288bc1474bac83339edc569780'
-const FD_URL = 'https://api.football-data.org/v4'
-// Mundial 2026 = competición WC en football-data.org
-const WC_CODE = 'WC'
-
-async function fdFetch(path) {
-  try {
-    const res = await fetch(`${FD_URL}${path}`, {
-      headers: { 'X-Auth-Token': FD_TOKEN }
-    })
-    if (!res.ok) return null
-    return await res.json()
-  } catch {
-    return null
-  }
-}
+import { getAllMatchData } from '../lib/footballApi'
 
 const HOT_STICKERS = [
   { id: '47', pais: 'Argentina', jugador: 'Lionel Messi', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%292.jpg/220px-Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%292.jpg', grupo: 'B', tipo: 'MVP ★' },
@@ -31,27 +15,22 @@ const HOT_STICKERS = [
 ]
 
 function MatchRow({ match }) {
-  const isLive = match.status === 'IN_PLAY' || match.status === 'HALFTIME' || match.status === 'PAUSED'
+  const isLive = ['IN_PLAY','HALFTIME','PAUSED','EXTRA_TIME','PENALTY_SHOOTOUT'].includes(match.status)
   const isFinished = match.status === 'FINISHED'
-  const isPending = match.status === 'TIMED' || match.status === 'SCHEDULED'
-  const minute = match.minute
-
   const homeScore = match.score?.fullTime?.home ?? match.score?.halfTime?.home
   const awayScore = match.score?.fullTime?.away ?? match.score?.halfTime?.away
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '10px 14px',
+      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
       background: isLive ? 'rgba(255,68,68,0.05)' : 'rgba(255,255,255,0.03)',
-      borderRadius: 8,
-      border: `1px solid ${isLive ? 'rgba(255,68,68,0.25)' : 'rgba(255,255,255,0.06)'}`,
+      borderRadius: 8, border: `1px solid ${isLive ? 'rgba(255,68,68,0.25)' : 'rgba(255,255,255,0.06)'}`,
     }}>
       <div style={{ minWidth: 52, textAlign: 'center' }}>
         {isLive ? (
           <span style={{ fontSize: 10, color: '#ff4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'center' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#ff4444', display: 'inline-block', animation: 'blink 1s infinite' }} />
-            {minute ? `${minute}'` : 'VIVO'}
+            VIVO
           </span>
         ) : isFinished ? (
           <span style={{ fontSize: 10, color: 'var(--gris-500)' }}>FIN</span>
@@ -77,11 +56,10 @@ function MatchRow({ match }) {
 }
 
 function StandingMini({ group }) {
+  const groupName = group.group?.replace('GROUP_', 'Grupo ') || group.stage
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--verde)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
-        {group.stage === 'GROUP_STAGE' ? `Grupo ${group.group?.replace('GROUP_', '') || ''}` : group.stage}
-      </div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--verde)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{groupName}</div>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
           {group.table?.slice(0, 4).map((row, i) => (
@@ -106,66 +84,32 @@ export default function Home() {
   const { user, getCatalogStats } = useStore()
   const stats = user ? getCatalogStats() : null
 
-  const [liveMatches, setLiveMatches] = useState([])
-  const [todayMatches, setTodayMatches] = useState([])
-  const [recentMatches, setRecentMatches] = useState([])
-  const [upcomingMatches, setUpcomingMatches] = useState([])
-  const [standings, setStandings] = useState([])
+  const [matchData, setMatchData] = useState({ live: [], today: [], recent: [], upcoming: [], standings: [] })
   const [apiStatus, setApiStatus] = useState('loading')
   const [activeTab, setActiveTab] = useState('hoy')
   const [activeGroupPage, setActiveGroupPage] = useState(0)
 
   useEffect(() => {
     loadData()
-    const interval = setInterval(loadLive, 60000)
+    const interval = setInterval(loadData, 60000)
     return () => clearInterval(interval)
   }, [])
-
-  async function loadLive() {
-    const data = await fdFetch(`/competitions/${WC_CODE}/matches?status=LIVE`)
-    if (data?.matches) setLiveMatches(data.matches)
-  }
 
   async function loadData() {
     setApiStatus('loading')
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-      const weekLater = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
-      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
-
-      const [liveData, todayData, recentData, upcomingData, standData] = await Promise.all([
-        fdFetch(`/competitions/${WC_CODE}/matches?status=LIVE`),
-        fdFetch(`/competitions/${WC_CODE}/matches?dateFrom=${today}&dateTo=${today}`),
-        fdFetch(`/competitions/${WC_CODE}/matches?status=FINISHED&dateFrom=${weekAgo}&dateTo=${today}&limit=6`),
-        fdFetch(`/competitions/${WC_CODE}/matches?status=TIMED&dateFrom=${tomorrow}&dateTo=${weekLater}&limit=6`),
-        fdFetch(`/competitions/${WC_CODE}/standings`),
-      ])
-
-      const live = liveData?.matches || []
-      const todays = (todayData?.matches || []).filter(m => m.status !== 'FINISHED' && m.status !== 'IN_PLAY')
-      const recent = recentData?.matches || []
-      const upcoming = upcomingData?.matches || []
-      const stand = standData?.standings || []
-
-      setLiveMatches(live)
-      setTodayMatches(todays)
-      setRecentMatches(recent.reverse())
-      setUpcomingMatches(upcoming)
-      setStandings(stand)
-
-      if (live.length > 0 || recent.length > 0 || todays.length > 0 || upcoming.length > 0) {
-        setApiStatus('ok')
-      } else {
-        setApiStatus('soon')
-      }
+      const data = await getAllMatchData()
+      setMatchData(data)
+      const hasData = data.live.length + data.today.length + data.recent.length + data.upcoming.length > 0
+      setApiStatus(hasData ? 'ok' : 'soon')
     } catch {
-      setApiStatus('error')
+      setApiStatus('soon')
     }
   }
 
-  const hasLive = liveMatches.length > 0
-  const allToday = [...liveMatches, ...todayMatches]
+  const { live, today, recent, upcoming, standings } = matchData
+  const hasLive = live.length > 0
+  const allToday = [...live, ...today]
   const GROUPS_PER_PAGE = 4
   const groupPages = Math.ceil(standings.length / GROUPS_PER_PAGE)
   const visibleGroups = standings.slice(activeGroupPage * GROUPS_PER_PAGE, (activeGroupPage + 1) * GROUPS_PER_PAGE)
@@ -182,14 +126,13 @@ export default function Home() {
             EN VIVO
           </span>
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', fontSize: 12 }}>
-            {liveMatches.map(m => (
+            {live.map(m => (
               <span key={m.id} style={{ whiteSpace: 'nowrap', color: 'var(--gris-300)' }}>
                 <strong style={{ color: 'white' }}>{m.homeTeam?.shortName}</strong>
                 <span style={{ color: 'var(--verde)', fontFamily: 'Bebas Neue, sans-serif', fontSize: 16, margin: '0 6px', letterSpacing: 1 }}>
                   {m.score?.fullTime?.home ?? 0}–{m.score?.fullTime?.away ?? 0}
                 </span>
                 <strong style={{ color: 'white' }}>{m.awayTeam?.shortName}</strong>
-                {m.minute && <span style={{ color: '#ff6b6b', marginLeft: 5 }}>{m.minute}'</span>}
               </span>
             ))}
           </div>
@@ -255,14 +198,15 @@ export default function Home() {
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden' }}>
             <div style={{ padding: '13px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>⚽ Mundial 2026</span>
-              {hasLive && <span style={{ background: 'var(--rojo)', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{liveMatches.length} EN VIVO</span>}
+              {hasLive && <span style={{ background: 'var(--rojo)', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{live.length} EN VIVO</span>}
+              {apiStatus === 'loading' && <span style={{ fontSize: 11, color: 'var(--gris-300)' }}>Cargando...</span>}
             </div>
 
             <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               {[
-                { key: 'hoy', label: hasLive ? `🔴 En vivo (${liveMatches.length})` : `Hoy (${allToday.length})` },
-                { key: 'proximos', label: `Próximos (${upcomingMatches.length})` },
-                { key: 'resultados', label: `Resultados (${recentMatches.length})` },
+                { key: 'hoy', label: hasLive ? `🔴 Vivo (${live.length})` : `Hoy (${allToday.length})` },
+                { key: 'proximos', label: `Próximos (${upcoming.length})` },
+                { key: 'resultados', label: `Resultados (${recent.length})` },
                 { key: 'posiciones', label: 'Tabla' },
               ].map(t => (
                 <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
@@ -279,8 +223,8 @@ export default function Home() {
             <div style={{ padding: 14, maxHeight: 380, overflowY: 'auto' }}>
               {apiStatus === 'loading' ? (
                 <div style={{ textAlign: 'center', padding: 32, color: 'var(--gris-300)', fontSize: 13 }}>
-                  <div style={{ fontSize: 24, marginBottom: 8 }}>⚽</div>
-                  Cargando datos del Mundial...
+                  <div style={{ fontSize: 24, marginBottom: 8, animation: 'spin 1s linear infinite', display: 'inline-block' }}>⚽</div>
+                  <br />Conectando con la API...
                 </div>
               ) : apiStatus === 'soon' ? (
                 <div style={{ textAlign: 'center', padding: 24 }}>
@@ -288,47 +232,48 @@ export default function Home() {
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 6 }}>Mundial 2026 — ¡Muy pronto!</div>
                   <div style={{ fontSize: 12, color: 'var(--gris-300)', lineHeight: 1.6 }}>
                     El torneo arranca el <strong style={{ color: 'var(--dorado)' }}>11 de junio de 2026</strong>.<br />
-                    Los partidos aparecerán aquí en tiempo real cuando inicie.
+                    Los partidos aparecerán aquí en tiempo real.
+                  </div>
+                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--dorado)', fontWeight: 600 }}>🇺🇸 🇨🇦 🇲🇽 EUA, Canadá y México</div>
+                    <div style={{ fontSize: 11, color: 'var(--gris-300)', marginTop: 3 }}>48 equipos · 104 partidos · 16 sedes</div>
                   </div>
                 </div>
               ) : activeTab === 'hoy' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {allToday.length === 0 ? (
-                    <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No hay partidos hoy</p>
-                  ) : allToday.map(m => <MatchRow key={m.id} match={m} />)}
+                  {allToday.length === 0
+                    ? <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No hay partidos hoy</p>
+                    : allToday.map(m => <MatchRow key={m.id} match={m} />)}
                 </div>
               ) : activeTab === 'proximos' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {upcomingMatches.length === 0 ? (
-                    <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Sin próximos partidos</p>
-                  ) : upcomingMatches.map(m => <MatchRow key={m.id} match={m} />)}
+                  {upcoming.length === 0
+                    ? <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Sin próximos partidos</p>
+                    : upcoming.map(m => <MatchRow key={m.id} match={m} />)}
                 </div>
               ) : activeTab === 'resultados' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {recentMatches.length === 0 ? (
-                    <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Sin resultados recientes</p>
-                  ) : recentMatches.map(m => <MatchRow key={m.id} match={m} />)}
+                  {recent.length === 0
+                    ? <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Sin resultados recientes</p>
+                    : recent.map(m => <MatchRow key={m.id} match={m} />)}
                 </div>
               ) : (
                 <div>
-                  {standings.length === 0 ? (
-                    <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Posiciones disponibles cuando inicie el torneo</p>
-                  ) : (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        {visibleGroups.map((group, i) => (
-                          <StandingMini key={i} group={group} />
-                        ))}
-                      </div>
-                      {groupPages > 1 && (
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12 }}>
-                          {Array.from({ length: groupPages }).map((_, i) => (
-                            <button key={i} onClick={() => setActiveGroupPage(i)} style={{ width: 8, height: 8, borderRadius: '50%', border: 'none', cursor: 'pointer', background: activeGroupPage === i ? 'var(--verde)' : 'var(--gris-600)' }} />
-                          ))}
+                  {standings.length === 0
+                    ? <p style={{ color: 'var(--gris-300)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>Posiciones disponibles al iniciar el torneo</p>
+                    : <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                          {visibleGroups.map((g, i) => <StandingMini key={i} group={g} />)}
                         </div>
-                      )}
-                    </>
-                  )}
+                        {groupPages > 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+                            {Array.from({ length: groupPages }).map((_, i) => (
+                              <button key={i} onClick={() => setActiveGroupPage(i)} style={{ width: 8, height: 8, borderRadius: '50%', border: 'none', cursor: 'pointer', background: activeGroupPage === i ? 'var(--verde)' : 'var(--gris-600)' }} />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                  }
                 </div>
               )}
             </div>
@@ -385,7 +330,6 @@ export default function Home() {
               <div style={{ fontSize: 28, marginBottom: 10 }}>{f.icon}</div>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'white' }}>{f.title}</div>
               <div style={{ color: 'var(--gris-300)', fontSize: 13, lineHeight: 1.6 }}>{f.desc}</div>
-              <div style={{ position: 'absolute', top: -10, right: -10, width: 70, height: 70, background: f.color, opacity: 0.04, borderRadius: '50%' }} />
             </div>
           ))}
         </div>
