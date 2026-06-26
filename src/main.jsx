@@ -29,8 +29,14 @@ function ProtectedRoute({ children }) {
 
 function AdminRoute({ children }) {
   const { user, authLoading } = useStore()
-  if (authLoading) return null
-  if (!user || user.email !== ADMIN_EMAIL) return <Navigate to="/" replace />
+  if (authLoading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--gris-300)', fontSize: 14 }}>
+      Verificando acceso...
+    </div>
+  )
+  const isAdmin = user?.email?.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()
+  if (!user) return <Navigate to="/login" replace />
+  if (!isAdmin) return <Navigate to="/dashboard" replace />
   return children
 }
 
