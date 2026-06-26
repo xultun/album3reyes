@@ -199,10 +199,105 @@ body { font-family: var(--font-body); background: var(--negro); color: var(--bla
   }
 }
 
+/* ── RESPONSIVE GLOBAL ───────────────────────────────────────── */
 @media (max-width: 768px) {
-  .main-content { padding: 16px 14px; }
-  .header { padding: 0 14px; }
-  .header-logo { font-size: 18px; }
+  .main-content { padding: 16px 12px; }
+  .header { padding: 0 12px; }
+  .header-logo { font-size: 17px; }
   .nav-link span { display: none; }
-  .section-title { font-size: 24px; }
+  .section-title { font-size: 22px; }
+
+  /* Dashboard: colapsar grids a 1 columna */
+  .dash-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dash-second-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dash-quick-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .dash-stat-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  /* Catálogo: tabs en scroll horizontal */
+  .catalog-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+  }
+  .catalog-tabs .tab {
+    white-space: nowrap;
+    flex: none !important;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .catalog-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .catalog-controls input,
+  .catalog-controls select {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Mercado: modal full screen */
+  .modal {
+    max-width: 100% !important;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    max-height: 95vh;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  /* Mercado: listing cards full width */
+  .listing-card {
+    padding: 12px !important;
+  }
+  .listing-header {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  /* Header: avatar más pequeño, nav compacto */
+  .avatar { width: 30px; height: 30px; font-size: 11px; }
+  .header-nav { gap: 4px; }
+
+  /* Tabs generales en scroll */
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    gap: 2px;
+  }
+  .tab { flex: none !important; font-size: 11px; padding: 6px 8px; }
+
+  /* Admin: ocultar columnas menos importantes */
+  .admin-hide-mobile { display: none !important; }
+
+  /* Stat grid responsive */
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stat-value { font-size: 22px !important; }
+
+  /* Group header */
+  .group-header { font-size: 15px; }
+}
+
+@media (max-width: 480px) {
+  .dash-stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .dash-quick-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .hero-grid h1 { font-size: 52px !important; }
 }
