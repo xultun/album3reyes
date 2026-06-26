@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useStore } from '../lib/store'
 import {
   ALL_STICKERS, GROUPS, TROQUELADOS,
-  ULTIMOS_CAMPEONES, PRIMERA_VEZ, getMVPs
+  CAMPEONES as ULTIMOS_CAMPEONES, PRIMERA_VEZ, getMVPs
 } from '../lib/albumData'
 import toast from 'react-hot-toast'
 
