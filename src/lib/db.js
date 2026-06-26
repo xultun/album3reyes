@@ -177,14 +177,27 @@ export async function createListing(uid, data) {
 }
 
 export async function getListings(filters = {}) {
-  const constraints = [where('activo', '==', true)]
-  if (filters.type) constraints.push(where('type', '==', filters.type))
-  if (filters.uid) constraints.push(where('uid', '==', filters.uid))
-  constraints.push(orderBy('createdAt', 'desc'))
-  if (filters.limit) constraints.push(limit(filters.limit))
+  try {
+    const constraints = [where('activo', '==', true)]
+    if (filters.type) constraints.push(where('type', '==', filters.type))
+    if (filters.uid) constraints.push(where('uid', '==', filters.uid))
+    constraints.push(orderBy('createdAt', 'desc'))
+    if (filters.limit) constraints.push(limit(filters.limit))
 
-  const snap = await getDocs(query(collection(db, 'listings'), ...constraints))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    const snap = await getDocs(query(collection(db, 'listings'), ...constraints))
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  } catch (err) {
+    // Si falla por índice faltante, intentar sin orderBy
+    try {
+      const constraints2 = [where('activo', '==', true)]
+      if (filters.uid) constraints2.push(where('uid', '==', filters.uid))
+      const snap2 = await getDocs(query(collection(db, 'listings'), ...constraints2))
+      const results = snap2.docs.map(d => ({ id: d.id, ...d.data() }))
+      return results.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    } catch {
+      return []
+    }
+  }
 }
 
 export async function getListingsBySticker(stickerId) {
