@@ -5,6 +5,8 @@ import { useStore } from '../../lib/store'
 import toast from 'react-hot-toast'
 import { useState } from 'react'
 
+const ADMIN_EMAIL = 'xultun18@gmail.com'
+
 export default function Header() {
   const { user, userProfile, getCatalogStats } = useStore()
   const navigate = useNavigate()
@@ -38,6 +40,11 @@ export default function Header() {
             <NavLink to="/dashboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               <span>🏠</span> <span>Dashboard</span>
             </NavLink>
+            {user?.email?.toLowerCase().trim() === ADMIN_EMAIL && (
+              <NavLink to="/admin" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} style={{ color: 'var(--rojo)' }}>
+                <span>⚙️</span> <span>Admin</span>
+              </NavLink>
+            )}
             <NavLink to="/catalogo" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               <span>📋</span> <span>Mi Álbum</span>
             </NavLink>
