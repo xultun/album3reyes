@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../lib/store'
 import { getListings, createListing, deactivateListing, findMatches } from '../lib/db'
 import { ALL_STICKERS } from '../lib/albumData'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { storage } from '../lib/firebase'
 import toast from 'react-hot-toast'
 
 function WhatsAppButton({ numero, mensaje }) {
@@ -19,7 +21,7 @@ function WhatsAppButton({ numero, mensaje }) {
 
 function ListingCard({ listing, isOwn, onDeactivate }) {
   const initials = listing.displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
-  const typeLabels = { venta: 'Venta', intercambio: 'Intercambio', busqueda: 'Busco' }
+  const typeLabels = { venta: '💰 Venta', intercambio: '🔄 Intercambio', busqueda: '🔍 Busco' }
   const typeColors = { venta: 'badge-venta', intercambio: 'badge-intercambio', busqueda: 'badge-falta' }
 
   const waMsg = listing.type === 'venta'
@@ -28,17 +30,24 @@ function ListingCard({ listing, isOwn, onDeactivate }) {
 
   return (
     <div className="card listing-card">
+      {/* Foto del sticker si existe */}
+      {listing.photoUrl && (
+        <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', height: 160, background: 'var(--negro-4)' }}>
+          <img src={listing.photoUrl} alt="Foto del cromo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      )}
+
       <div className="listing-header">
         <div className="listing-avatar">{initials}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
             {listing.displayName}
-            {listing.pais && <span style={{ fontSize: 11, color: 'var(--gris-500)' }}>🌍 {listing.pais}</span>}
+            {listing.pais && <span style={{ fontSize: 11, color: 'var(--gris-300)' }}>🌍 {listing.pais}</span>}
           </div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
+          <div style={{ display: 'flex', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
             <span className={`badge ${typeColors[listing.type]}`}>{typeLabels[listing.type]}</span>
             {listing.precio && (
-              <span style={{ fontSize: 12, color: 'var(--gris-700)', fontWeight: 600 }}>
+              <span style={{ fontSize: 12, color: 'var(--dorado)', fontWeight: 600 }}>
                 {listing.moneda} {listing.precio}
               </span>
             )}
@@ -58,7 +67,7 @@ function ListingCard({ listing, isOwn, onDeactivate }) {
       </div>
 
       {listing.descripcion && (
-        <p style={{ fontSize: 13, color: 'var(--gris-700)', marginTop: 8, marginBottom: 8 }}>
+        <p style={{ fontSize: 13, color: 'var(--gris-300)', marginTop: 8, marginBottom: 8, lineHeight: 1.5 }}>
           {listing.descripcion}
         </p>
       )}
@@ -79,8 +88,11 @@ function NewListingModal({ onClose, onCreated }) {
   const [moneda, setMoneda] = useState('USD')
   const [descripcion, setDescripcion] = useState('')
   const [loading, setLoading] = useState(false)
+  const [photo, setPhoto] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const fileRef = useRef()
 
-  // Sugerir stickers según tipo
   const suggestions = type === 'intercambio'
     ? Object.entries(catalog).filter(([, v]) => v.status === 'repetida').map(([k]) => k)
     : type === 'busqueda'
@@ -97,6 +109,17 @@ function NewListingModal({ onClose, onCreated }) {
 
   const removeSticker = (id) => setSelectedStickers(prev => prev.filter(s => s !== id))
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La foto no puede superar 5MB')
+      return
+    }
+    setPhoto(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!selectedStickers.length) return toast.error('Agrega al menos un cromo')
@@ -104,18 +127,36 @@ function NewListingModal({ onClose, onCreated }) {
 
     setLoading(true)
     try {
+      let photoUrl = null
+
+      // Subir foto si hay una
+      if (photo) {
+        setUploadingPhoto(true)
+        const photoRef = ref(storage, `listings/${user.uid}/${Date.now()}_${photo.name}`)
+        await uploadBytes(photoRef, photo)
+        photoUrl = await getDownloadURL(photoRef)
+        setUploadingPhoto(false)
+      }
+
       const stickerInfo = selectedStickers.map(id => {
         const s = ALL_STICKERS.find(st => String(st.id) === id)
         return s ? { id, label: s.label, pais: s.pais, grupo: s.grupo } : { id, label: `Cromo #${id}` }
       })
-      await createListing(user.uid, { type, stickers: selectedStickers, stickerInfo, precio, moneda, descripcion })
+
+      await createListing(user.uid, {
+        type, stickers: selectedStickers, stickerInfo,
+        precio, moneda, descripcion, photoUrl
+      })
+
       toast.success('Publicación creada')
       onCreated()
       onClose()
     } catch (err) {
+      console.error(err)
       toast.error('Error al publicar')
     } finally {
       setLoading(false)
+      setUploadingPhoto(false)
     }
   }
 
@@ -127,8 +168,10 @@ function NewListingModal({ onClose, onCreated }) {
           <button className="btn btn-secondary btn-sm" onClick={onClose}>✕</button>
         </div>
         <form className="modal-body" onSubmit={handleSubmit}>
+
+          {/* Tipo */}
           <div className="form-group" style={{ marginBottom: 16 }}>
-            <label className="form-label">Tipo</label>
+            <label className="form-label">Tipo de publicación</label>
             <div className="tabs">
               {[['intercambio','🔄 Intercambio'],['venta','💰 Venta'],['busqueda','🔍 Busco']].map(([k,l]) => (
                 <button key={k} type="button" className={`tab ${type===k?'active':''}`} onClick={() => setType(k)}>{l}</button>
@@ -136,6 +179,7 @@ function NewListingModal({ onClose, onCreated }) {
             </div>
           </div>
 
+          {/* Precio (solo venta) */}
           {type === 'venta' && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               <div className="form-group" style={{ flex: 1 }}>
@@ -144,14 +188,15 @@ function NewListingModal({ onClose, onCreated }) {
               </div>
               <div className="form-group">
                 <label className="form-label">Moneda</label>
-                <select className="select" value={moneda} onChange={e => setMoneda(e.target.value)}>
+                <select className="select" value={moneda} onChange={e => setMoneda(e.target.value)} style={{ width: 90 }}>
                   {['USD','DOP','PEN','COP','MXN','ARS','EUR'].map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
             </div>
           )}
 
-          <div className="form-group" style={{ marginBottom: 12 }}>
+          {/* Cromos */}
+          <div className="form-group" style={{ marginBottom: 10 }}>
             <label className="form-label">Cromos (número del álbum)</label>
             <div style={{ display: 'flex', gap: 6 }}>
               <input
@@ -159,25 +204,23 @@ function NewListingModal({ onClose, onCreated }) {
                 value={stickerInput}
                 onChange={e => setStickerInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSticker(stickerInput) } }}
-                placeholder="Ej: 47, T-12, A"
+                placeholder="Ej: 47, T-12"
               />
               <button type="button" className="btn btn-secondary" onClick={() => addSticker(stickerInput)}>+</button>
             </div>
           </div>
 
+          {/* Sugerencias del catálogo */}
           {suggestions.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--gris-500)', marginBottom: 4 }}>
-                {type === 'intercambio' ? 'Tus repetidas' : 'Tus faltantes'}:
+              <div style={{ fontSize: 11, color: 'var(--gris-300)', marginBottom: 5 }}>
+                {type === 'intercambio' ? '⭐ Tus repetidas' : '❌ Tus faltantes'} (click para agregar):
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 80, overflowY: 'auto' }}>
-                {suggestions.slice(0, 50).map(id => (
-                  <button
-                    key={id} type="button"
-                    className="sticker-pill"
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 72, overflowY: 'auto' }}>
+                {suggestions.slice(0, 60).map(id => (
+                  <button key={id} type="button" className="sticker-pill"
                     onClick={() => addSticker(id)}
-                    style={{ cursor: 'pointer', border: '1px dashed var(--gris-300)' }}
-                  >
+                    style={{ cursor: 'pointer', border: '1px dashed var(--verde)', color: 'var(--verde)' }}>
                     #{id}
                   </button>
                 ))}
@@ -185,12 +228,17 @@ function NewListingModal({ onClose, onCreated }) {
             </div>
           )}
 
+          {/* Seleccionados */}
           {selectedStickers.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: 'var(--gris-500)', marginBottom: 4 }}>Seleccionados ({selectedStickers.length}):</div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: 'var(--gris-300)', marginBottom: 5 }}>
+                Seleccionados ({selectedStickers.length}) — click para quitar:
+              </div>
               <div className="listing-stickers">
                 {selectedStickers.map(id => (
-                  <span key={id} className="sticker-pill" style={{ cursor: 'pointer' }} onClick={() => removeSticker(id)}>
+                  <span key={id} className="sticker-pill"
+                    onClick={() => removeSticker(id)}
+                    style={{ cursor: 'pointer', borderColor: 'var(--rojo)', color: 'var(--rojo)' }}>
                     #{id} ✕
                   </span>
                 ))}
@@ -198,13 +246,43 @@ function NewListingModal({ onClose, onCreated }) {
             </div>
           )}
 
+          {/* Foto del cromo */}
+          <div className="form-group" style={{ marginBottom: 14 }}>
+            <label className="form-label">📸 Foto del cromo (opcional)</label>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileRef}
+              onChange={handlePhotoChange}
+              style={{ display: 'none' }}
+            />
+            {photoPreview ? (
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <img src={photoPreview} alt="preview" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--gris-600)' }} />
+                <button type="button" onClick={() => { setPhoto(null); setPhotoPreview(null) }}
+                  style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.7)', border: 'none', color: 'white', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: 13 }}>
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fileRef.current.click()}
+                style={{ width: '100%', padding: '20px', border: '2px dashed var(--gris-600)', borderRadius: 8, background: 'transparent', color: 'var(--gris-300)', cursor: 'pointer', fontSize: 13, transition: 'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--verde)'; e.currentTarget.style.color = 'var(--verde)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--gris-600)'; e.currentTarget.style.color = 'var(--gris-300)' }}>
+                📷 Subir foto del cromo
+                <div style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>JPG, PNG · máx 5MB</div>
+              </button>
+            )}
+          </div>
+
+          {/* Descripción */}
           <div className="form-group" style={{ marginBottom: 16 }}>
             <label className="form-label">Descripción (opcional)</label>
-            <textarea className="textarea" rows={2} value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Ej: Envío por Zoom, pago por transferencia..." />
+            <textarea className="textarea" rows={2} value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Ej: En buen estado, envío por Zoom..." />
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-            {loading ? 'Publicando...' : 'Publicar'}
+            {uploadingPhoto ? 'Subiendo foto...' : loading ? 'Publicando...' : 'Publicar'}
           </button>
         </form>
       </div>
@@ -222,17 +300,21 @@ export default function Marketplace() {
 
   const loadListings = async () => {
     setLoading(true)
-    const data = await getListings({ type: filter === 'all' ? undefined : filter, limit: 50 })
-    setListings(data)
-    setLoading(false)
+    try {
+      const data = await getListings({ type: filter === 'all' ? undefined : filter })
+      setListings(data)
+    } catch (err) {
+      console.error(err)
+      toast.error('Error cargando publicaciones')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { loadListings() }, [filter])
 
   useEffect(() => {
-    if (user) {
-      findMatches(user.uid).then(setMatches).catch(() => {})
-    }
+    if (user) findMatches(user.uid).then(setMatches).catch(() => {})
   }, [user])
 
   const handleDeactivate = async (id) => {
@@ -258,13 +340,13 @@ export default function Marketplace() {
         )}
       </div>
 
-      {/* Matches personalizados */}
+      {/* Matches */}
       {user && matches.length > 0 && (
-        <div style={{ background: 'var(--verde-bg)', border: '1.5px solid var(--verde)', borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontWeight: 700, color: 'var(--verde)', marginBottom: 6 }}>
+        <div style={{ background: 'rgba(0,200,83,0.07)', border: '1px solid rgba(0,200,83,0.25)', borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 20 }}>
+          <div style={{ fontWeight: 700, color: 'var(--verde)', marginBottom: 4 }}>
             🎯 {matches.length} posibles intercambios para ti
           </div>
-          <p style={{ fontSize: 13, color: 'var(--gris-700)' }}>
+          <p style={{ fontSize: 13, color: 'var(--gris-300)' }}>
             Hay coleccionistas con cromos que te faltan. Revisa las publicaciones de intercambio abajo.
           </p>
         </div>
@@ -285,7 +367,7 @@ export default function Marketplace() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--gris-500)' }}>Cargando...</div>
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--gris-300)' }}>Cargando...</div>
       ) : listings.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">📭</div>
@@ -293,15 +375,14 @@ export default function Marketplace() {
           <div className="empty-state-desc">
             {user ? 'Sé el primero en publicar.' : 'Inicia sesión para publicar.'}
           </div>
-          {!user && <a href="/registro" className="btn btn-primary" style={{ marginTop: 16 }}>Crear cuenta</a>}
+          {!user && <a href="/registro" className="btn btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>Crear cuenta</a>}
         </div>
       ) : (
         <div>
-          {/* Mis publicaciones */}
           {myListings.length > 0 && (
             <div style={{ marginBottom: 32 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: 'var(--gris-700)' }}>Mis publicaciones</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: 'var(--gris-300)' }}>Mis publicaciones</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                 {myListings.map(l => (
                   <ListingCard key={l.id} listing={l} isOwn onDeactivate={handleDeactivate} />
                 ))}
@@ -309,13 +390,12 @@ export default function Marketplace() {
             </div>
           )}
 
-          {/* Publicaciones de otros */}
           {otherListings.length > 0 && (
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: 'var(--gris-700)' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: 'var(--gris-300)' }}>
                 Publicaciones ({otherListings.length})
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                 {otherListings.map(l => (
                   <ListingCard key={l.id} listing={l} isOwn={false} onDeactivate={handleDeactivate} />
                 ))}
