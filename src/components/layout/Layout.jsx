@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import Header from './Header'
 import Footer from './Footer'
-import WelcomePopup from '../WelcomePopup'
+import WelcomePopup from './WelcomePopup'
 
 export default function Layout() {
   return (
