@@ -4,14 +4,13 @@ import { useStore } from '../lib/store'
 import { getAllMatchData } from '../lib/footballApi'
 
 const HOT_STICKERS = [
-  { id: '47', pais: 'Argentina', jugador: 'Lionel Messi', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%292.jpg/220px-Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%292.jpg', grupo: 'B', tipo: 'MVP ★' },
-  { id: '123', pais: 'Brasil', jugador: 'Vinicius Jr.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Vinicius_Junior_2023.jpg/220px-Vinicius_Junior_2023.jpg', grupo: 'D', tipo: 'MVP ★' },
-  { id: '198', pais: 'Francia', jugador: 'Kylian Mbappé', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_by_Sandro_Halank%E2%80%93117_%28cropped%29.jpg/220px-2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_by_Sandro_Halank%E2%80%93117_%28cropped%29.jpg', grupo: 'C', tipo: 'MVP ★' },
-  { id: '301', pais: 'Portugal', jugador: 'Cristiano Ronaldo', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Cristiano_Ronaldo_2018.jpg/220px-Cristiano_Ronaldo_2018.jpg', grupo: 'D', tipo: 'MVP ★' },
-  { id: '88', pais: 'Inglaterra', jugador: 'Jude Bellingham', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Jude_Bellingham_2023_%28cropped%29.jpg/220px-Jude_Bellingham_2023_%28cropped%29.jpg', grupo: 'G', tipo: 'MVP ★' },
-  { id: '215', pais: 'Corea del Sur', jugador: 'Son Heung-min', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Son_Heung-min_2019_%28cropped%29.jpg/220px-Son_Heung-min_2019_%28cropped%29.jpg', grupo: 'K', tipo: 'MVP ★' },
-  { id: '334', pais: 'España', jugador: 'Lamine Yamal', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Lamine_Yamal_2024_%28cropped%29.jpg/220px-Lamine_Yamal_2024_%28cropped%29.jpg', grupo: 'D', tipo: 'MVP ★' },
-  { id: '156', pais: 'Alemania', jugador: 'Jamal Musiala', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Jamal_Musiala_2022_%28cropped%29.jpg/220px-Jamal_Musiala_2022_%28cropped%29.jpg', grupo: 'E', tipo: 'MVP ★' },
+  { id: '33',  pais: 'España',    jugador: 'Lamine Yamal',    img: 'https://github.com/xultun/album3reyes/blob/main/lamin.png?raw=true',    grupo: 'H', tipo: 'MVP ★' },
+  { id: '34',  pais: 'Francia',   jugador: 'Kylian Mbappé',   img: 'https://github.com/xultun/album3reyes/blob/main/mbappe.png?raw=true',   grupo: 'I', tipo: 'MVP ★' },
+  { id: '35',  pais: 'Argentina', jugador: 'Lionel Messi',    img: 'https://github.com/xultun/album3reyes/blob/main/messi.png?raw=true',    grupo: 'J', tipo: 'Leyenda 🥇' },
+  { id: '36',  pais: 'Brasil',    jugador: 'Vinicius Jr.',    img: 'https://github.com/xultun/album3reyes/blob/main/vinicius.png?raw=true', grupo: 'C', tipo: 'MVP ★' },
+  { id: '37',  pais: 'Alemania',  jugador: 'Florian Wirtz',   img: 'https://github.com/xultun/album3reyes/blob/main/wirtz.png?raw=true',    grupo: 'E', tipo: 'MVP ★' },
+  { id: '38',  pais: 'Bélgica',   jugador: 'Thibaut Courtois',img: 'https://github.com/xultun/album3reyes/blob/main/courtois.png?raw=true', grupo: 'G', tipo: 'MVP ★' },
+  { id: '39',  pais: 'Portugal',  jugador: 'Cristiano Ronaldo',img: 'https://github.com/xultun/album3reyes/blob/main/cr7.png?raw=true',     grupo: 'K', tipo: 'Leyenda 🥇' },
 ]
 
 function MatchRow({ match }) {
@@ -286,7 +285,7 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
             <h2 className="section-title">Cromos más <span>buscados</span></h2>
-            <p className="section-subtitle">Los MVPs más cotizados del álbum</p>
+            <p className="section-subtitle">Las figuras más codiciadas del álbum</p>
           </div>
           <Link to="/catalogo" style={{ fontSize: 13, color: 'var(--verde)', textDecoration: 'none' }}>Ver álbum completo →</Link>
         </div>
