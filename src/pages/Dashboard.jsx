@@ -253,9 +253,21 @@ export default function Dashboard() {
             {PAISES_FLAG[userProfile?.pais] || '🌍'} {userProfile?.pais || 'Sin país'} · Miembro de la comunidad
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link to="/catalogo" className="btn btn-primary">+ Marcar cromos</Link>
           <Link to="/mercado" className="btn btn-ghost">Ver mercado</Link>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              const url = `${window.location.origin}/album3reyes/album/${user?.uid}`
+              navigator.clipboard.writeText(url).then(() => {
+                import('react-hot-toast').then(({ default: toast }) => toast.success('¡Enlace copiado! Compártelo con quien quieras 🔗'))
+              })
+            }}
+            title="Compartir mi álbum"
+          >
+            🔗 Compartir álbum
+          </button>
         </div>
       </div>
 
