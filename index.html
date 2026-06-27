@@ -13,8 +13,8 @@
     <!-- Open Graph (Facebook, WhatsApp, Telegram) -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://xultun.github.io/album3reyes/" />
-    <meta property="og:title" content="🏆 ¿Ya tienes el Álbum 3 Reyes del Mundial?" />
-    <meta property="og:description" content="🔄 Intercambia repetidas · 💰 Vende tus cromos · 📋 Registra tu colección. ¡La comunidad de coleccionistas más grande del Mundial 2026! Únete gratis 👇" />
+    <meta property="og:title" content="⚽ Álbum 3 Reyes Mundial — ¡Regístrate gratis!" />
+    <meta property="og:description" content="Registra tus figuras del Mundial 2026, marca las que tienes y las que te faltan, intercambia repetidas y vende tus cromos. ¡Únete a la comunidad de coleccionistas!" />
     <meta property="og:image" content="https://github.com/xultun/album3reyes/blob/main/messi.png?raw=true" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -23,13 +23,23 @@
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="🏆 ¿Ya tienes el Álbum 3 Reyes del Mundial?" />
-    <meta name="twitter:description" content="🔄 Intercambia · 💰 Vende · 📋 Registra tu colección. ¡Únete gratis a la comunidad!" />
+    <meta name="twitter:title" content="⚽ Álbum 3 Reyes Mundial — ¡Regístrate gratis!" />
+    <meta name="twitter:description" content="Registra tus figuras del Mundial 2026, intercambia repetidas y conecta con coleccionistas. ¡100% gratis!" />
     <meta name="twitter:image" content="https://github.com/xultun/album3reyes/blob/main/messi.png?raw=true" />
 
     <!-- WhatsApp usa og: tags, pero reforzamos -->
     <meta property="og:image:type" content="image/png" />
 
+    <!-- GitHub Pages SPA redirect handler -->
+    <script>
+      (function() {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
