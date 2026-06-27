@@ -12,6 +12,7 @@ import Catalog from './pages/Catalog'
 import Marketplace from './pages/Marketplace'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
+import PublicCatalog from './pages/PublicCatalog'
 import { Login, Register } from './pages/Login'
 
 const ADMIN_EMAIL = 'xultun18@gmail.com'
@@ -64,6 +65,7 @@ function App() {
           <Route path="catalogo" element={<ProtectedRoute><Catalog /></ProtectedRoute>} />
           <Route path="perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
+          <Route path="album/:uid" element={<PublicCatalog />} />
         </Route>
       </Routes>
     </BrowserRouter>
